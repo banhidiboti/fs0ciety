@@ -1,0 +1,161 @@
+.gb-panel {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.gb-line {
+  color: #7fe0a0;
+  word-break: break-word;
+}
+
+.gb-line--header {
+  color: #3ecf66;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.gb-line--pending {
+  opacity: 0.6;
+}
+
+.gb-ts,
+.gb-alias {
+  color: #4b5563;
+}
+
+.gb-msg {
+  color: #c8d0d8;
+}
+
+.gb-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gb-caret {
+  color: #3ecf66;
+  flex-shrink: 0;
+}
+
+.gb-alias-input,
+.gb-message-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #2e303a;
+  color: #c8d0d8;
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 4px 2px;
+  outline: none;
+}
+
+.gb-alias-input:focus,
+.gb-message-input:focus {
+  border-bottom-color: #3ecf66;
+}
+
+.gb-send {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid #2e303a;
+  color: #7fe0a0;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.gb-send:hover:not(:disabled) {
+  border-color: #3ecf66;
+  color: #3ecf66;
+}
+
+.gb-send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.gb-alias-input {
+  flex: 0 0 96px;
+  min-width: 0;
+}
+
+.gb-message-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gb-status {
+  margin: 0 0 12px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.gb-status--error {
+  color: #e8b339;
+}
+
+.gb-status--error::before {
+  content: '> ';
+  color: #4b5563;
+}
+
+.gb-status--ack {
+  color: #3ecf66;
+}
+
+.gb-retry {
+  background: none;
+  border: none;
+  color: #e8b339;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gb-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gb-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: #3ecf66;
+  animation: gb-blink 1s steps(1) infinite;
+}
+
+@keyframes gb-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .gb-prompt {
+    flex-wrap: wrap;
+  }
+
+  .gb-alias-input {
+    flex: 1 1 100%;
+  }
+
+  .gb-message-input {
+    flex: 1 1 100%;
+  }
+}

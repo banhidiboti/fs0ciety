@@ -1,0 +1,93 @@
+.boot-root {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.boot-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+}
+
+.boot-content--ready {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.boot-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+  cursor: default;
+}
+
+.boot-overlay--exiting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-log {
+  width: fit-content;
+  max-width: calc(100% - 48px);
+  padding: 0 24px;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.boot-line {
+  color: #9ca3af;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.boot-tag {
+  display: inline-block;
+  width: 6ch;
+  margin-right: 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.boot-tag::before {
+  content: '[';
+}
+
+.boot-tag::after {
+  content: ']';
+}
+
+.boot-tag--ok {
+  color: #3ecf66;
+}
+
+.boot-tag--warn {
+  color: #e8b339;
+}
+
+.boot-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 4px;
+  vertical-align: -0.15em;
+  background: #3ecf66;
+  animation: boot-blink 1s steps(1) infinite;
+}
+
+@keyframes boot-blink {
+  50% {
+    opacity: 0;
+  }
+}

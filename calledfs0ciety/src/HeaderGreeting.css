@@ -1,0 +1,27 @@
+.hg-line {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 16px;
+  color: #7fe0a0;
+}
+
+.hg-prompt {
+  color: #3ecf66;
+}
+
+.hg-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: #3ecf66;
+  animation: hg-blink 1s steps(1) infinite;
+}
+
+@keyframes hg-blink {
+  50% {
+    opacity: 0;
+  }
+}

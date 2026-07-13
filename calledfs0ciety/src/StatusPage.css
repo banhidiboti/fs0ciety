@@ -1,0 +1,143 @@
+/* The shared #panel-row uses align-items: flex-start for desktop's
+   top-aligned columns, which stops its children stretching once the row
+   collapses to a single column on mobile — pin this panel's own slot to
+   full width so it doesn't shrink to the shared min-width floor instead
+   (which was wider than some phone viewports, causing horizontal overflow
+   and the bar row spilling past the edge). Scoped via :has() so only this
+   panel's slot is affected. */
+#panel-row .panel-slot:has(.status-panel) {
+  width: 100%;
+  min-width: 0;
+}
+
+.status-panel {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.status-line {
+  color: #7fe0a0;
+}
+
+.status-line::before {
+  content: '> ';
+  color: #4b5563;
+}
+
+.status-line--header {
+  color: #3ecf66;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.status-line--dim {
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.status-msg {
+  margin: 8px 0;
+  color: #4b5563;
+}
+
+.status-msg--error {
+  color: #e8b339;
+}
+
+.status-section {
+  margin: 16px 0;
+}
+
+.status-bar-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.status-bar-label {
+  flex: 0 0 80px;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.status-bar {
+  color: #4b5563;
+  white-space: pre;
+}
+
+.status-bar-fill {
+  color: #3ecf66;
+}
+
+.status-bar-empty {
+  color: #2e303a;
+}
+
+.status-bar-pct {
+  color: #c8d0d8;
+  min-width: 40px;
+  text-align: right;
+}
+
+.status-service {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.status-tag {
+  display: inline-block;
+  width: 6ch;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.status-tag::before {
+  content: '[';
+}
+
+.status-tag::after {
+  content: ']';
+}
+
+.status-tag--up {
+  color: #3ecf66;
+}
+
+.status-tag--down {
+  color: #e05252;
+}
+
+.status-service-name {
+  flex: 1 1 auto;
+  color: #c8d0d8;
+}
+
+.status-service-time {
+  color: #4b5563;
+  min-width: 48px;
+  text-align: right;
+}
+
+.status-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 4px;
+  vertical-align: -0.15em;
+  background: #3ecf66;
+  animation: status-blink 1s steps(1) infinite;
+}
+
+@keyframes status-blink {
+  50% {
+    opacity: 0;
+  }
+}
