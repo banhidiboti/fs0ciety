@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3'
 import cors from 'cors'
+import crypto from 'node:crypto'
 import express from 'express'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import http from 'node:http'
@@ -70,6 +71,63 @@ function isRateLimited(ip) {
   timestamps.push(now)
   postTimestampsByIp.set(ip, timestamps)
   return false
+}
+
+const ADMIN_PASSWORD = 'F@szkukker1'
+const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000
+const ADMIN_LOGIN_MAX = 5
+const adminLoginAttemptsByIp = new Map()
+
+function isAdminLoginRateLimited(ip) {
+  const now = Date.now()
+  const timestamps = (adminLoginAttemptsByIp.get(ip) || []).filter(
+    (t) => now - t < ADMIN_LOGIN_WINDOW_MS,
+  )
+  if (timestamps.length >= ADMIN_LOGIN_MAX) {
+    adminLoginAttemptsByIp.set(ip, timestamps)
+    return true
+  }
+  timestamps.push(now)
+  adminLoginAttemptsByIp.set(ip, timestamps)
+  return false
+}
+
+function isCorrectPassword(candidate) {
+  // Hash both sides to a fixed-length digest so timingSafeEqual never sees
+  // mismatched buffer lengths (which itself would leak length info).
+  const candidateHash = crypto.createHash('sha256').update(candidate).digest()
+  const actualHash = crypto.createHash('sha256').update(ADMIN_PASSWORD).digest()
+  return crypto.timingSafeEqual(candidateHash, actualHash)
+}
+
+const ADMIN_TOKEN_TTL_MS = 30 * 60 * 1000
+const adminTokens = new Map() // token -> expiresAt
+
+function createAdminToken() {
+  const token = crypto.randomBytes(32).toString('hex')
+  adminTokens.set(token, Date.now() + ADMIN_TOKEN_TTL_MS)
+  return token
+}
+
+function isValidAdminToken(token) {
+  if (!token) return false
+  const expiresAt = adminTokens.get(token)
+  if (!expiresAt) return false
+  if (Date.now() > expiresAt) {
+    adminTokens.delete(token)
+    return false
+  }
+  return true
+}
+
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const token = bearerToken || req.headers['x-admin-token']
+  if (!isValidAdminToken(token)) {
+    return res.status(401).json({ error: 'unauthorized' })
+  }
+  next()
 }
 
 function readCpuTempC() {
@@ -257,6 +315,9 @@ app.post('/api/traces', (req, res) => {
   if (!cleanAlias || !cleanMessage) {
     return res.status(400).json({ error: 'empty_input' })
   }
+  if (cleanAlias.toLowerCase() === 'admin') {
+    return res.status(400).json({ error: 'reserved_alias' })
+  }
   if (cleanAlias.length > 32 || cleanMessage.length > 280) {
     return res.status(400).json({ error: 'too_long' })
   }
@@ -284,6 +345,37 @@ app.post('/api/traces', (req, res) => {
     message: row.message,
     createdAt: row.created_at,
   })
+})
+
+app.post('/api/admin/login', (req, res) => {
+  res.set('Cache-Control', 'no-store')
+
+  if (isAdminLoginRateLimited(getClientIp(req))) {
+    return res.status(429).json({ error: 'rate_limited' })
+  }
+
+  const { password } = req.body || {}
+  if (typeof password !== 'string' || !isCorrectPassword(password)) {
+    return res.status(401).json({ error: 'invalid_credentials' })
+  }
+
+  res.json({ token: createAdminToken() })
+})
+
+app.delete('/api/traces/:id', requireAdmin, (req, res) => {
+  res.set('Cache-Control', 'no-store')
+
+  const id = parseInt(req.params.id, 10)
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'invalid_id' })
+  }
+
+  const info = db.prepare('DELETE FROM traces WHERE id = ?').run(id)
+  if (info.changes === 0) {
+    return res.status(404).json({ error: 'not_found' })
+  }
+
+  res.status(204).end()
 })
 
 app.get('/api/status', async (req, res) => {

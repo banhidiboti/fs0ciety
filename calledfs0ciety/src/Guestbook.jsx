@@ -39,6 +39,8 @@ function Guestbook({ ready }) {
   const [justSentId, setJustSentId] = useState(null)
   const [introDone, setIntroDone] = useState(prefersReducedMotion)
   const [revealCount, setRevealCount] = useState(0)
+  const [adminToken, setAdminToken] = useState(null)
+  const adminMode = adminToken !== null
 
   async function loadTraces() {
     setLoadState('loading')
@@ -68,11 +70,53 @@ function Guestbook({ ready }) {
     return () => clearTimeout(timer)
   }, [entries, introDone, revealCount])
 
+  async function handleAdminLogin(password) {
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      if (!res.ok) throw new Error('access_denied')
+      const body = await res.json()
+      setAdminToken(body.token)
+      setAlias(loadSavedAlias())
+      setMessage('')
+    } catch {
+      setSubmitError('access denied')
+      setMessage('')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!adminToken) return
+    const prevEntries = entries
+    setEntries((prev) => prev.filter((entry) => entry.id !== id))
+    try {
+      const res = await fetch(`/api/traces/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      if (!res.ok) throw new Error('delete_failed')
+    } catch {
+      setEntries(prevEntries)
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     const trimmedAlias = alias.trim()
     const trimmedMessage = message.trim()
     if (!trimmedAlias || !trimmedMessage || submitting) return
+
+    if (trimmedAlias.toLowerCase() === 'admin') {
+      await handleAdminLogin(trimmedMessage)
+      return
+    }
 
     const tempId = `pending-${Date.now()}`
     setEntries((prev) => [
@@ -142,6 +186,7 @@ function Guestbook({ ready }) {
 
       {submitError && <p className="gb-status gb-status--error">{submitError}</p>}
       {justSentId && <p className="gb-status gb-status--ack">// transmission received</p>}
+      {adminMode && <p className="gb-status gb-status--ack">{'// admin mode active'}</p>}
 
       <div className="gb-feed">
         {loadState === 'loading' && <p className="gb-status">loading trace log…</p>}
@@ -161,6 +206,16 @@ function Guestbook({ ready }) {
             <span className="gb-ts">[{formatEntryTimestamp(entry.createdAt)}]</span>{' '}
             <span className="gb-alias">{`<${entry.alias}>`}</span>{' '}
             <span className="gb-msg">{entry.message}</span>
+            {adminMode && !entry.pending && (
+              <button
+                type="button"
+                className="gb-delete"
+                onClick={() => handleDelete(entry.id)}
+                aria-label={`delete entry from ${entry.alias}`}
+              >
+                [x]
+              </button>
+            )}
             {!introDone && i === visible.length - 1 && <span className="gb-cursor" />}
           </div>
         ))}
