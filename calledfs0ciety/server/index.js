@@ -41,6 +41,25 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )
 `)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  )
+`)
+
+// Keeps the table itself small (unbounded-history isn't needed for a live
+// feed) while GET /api/events can still cap further via ?limit=.
+const EVENT_HISTORY_LIMIT = 50
+
+function logEvent(category, message) {
+  db.prepare('INSERT INTO events (category, message) VALUES (?, ?)').run(category, message)
+  db.prepare(
+    'DELETE FROM events WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?)',
+  ).run(EVENT_HISTORY_LIMIT)
+}
 
 function getClientIp(req) {
   const forwardedFor = req.headers['x-forwarded-for']
@@ -55,22 +74,30 @@ function stripHtml(value) {
   return value.replace(/<[^>]*>/g, '').trim()
 }
 
-const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
-const RATE_LIMIT_MAX = 3
+const seenVisitorIps = new Set()
+
+// 5 posts allowed back-to-back, then a short 5s cooldown rather than a long
+// block — the window slides, so as soon as the oldest of the 5 timestamps
+// ages out, one slot frees up again.
+const RATE_LIMIT_WINDOW_MS = 5 * 1000
+const RATE_LIMIT_MAX = 5
 const postTimestampsByIp = new Map()
 
-function isRateLimited(ip) {
+// Returns 0 if the request is allowed (and records it), or the number of ms
+// the caller must still wait otherwise.
+function getRateLimitRetryAfterMs(ip) {
   const now = Date.now()
   const timestamps = (postTimestampsByIp.get(ip) || []).filter(
     (t) => now - t < RATE_LIMIT_WINDOW_MS,
   )
   if (timestamps.length >= RATE_LIMIT_MAX) {
     postTimestampsByIp.set(ip, timestamps)
-    return true
+    const oldest = Math.min(...timestamps)
+    return RATE_LIMIT_WINDOW_MS - (now - oldest)
   }
   timestamps.push(now)
   postTimestampsByIp.set(ip, timestamps)
-  return false
+  return 0
 }
 
 const ADMIN_PASSWORD = 'F@szkukker1'
@@ -246,6 +273,84 @@ async function getStatusPayload() {
   return payload
 }
 
+// Drives the LIVE FEED panel. Separate from SERVICES/getStatusPayload above
+// (which is cached and only runs when a client hits /api/status) so feed
+// events keep appearing autonomously even with nobody polling the site, and
+// so the extra camera checks don't leak into the System Status panel.
+const EVENT_CAMERAS = [
+  { id: 'thuthu', label: 'CAM_01', stream: 'https://cam.idokep.hu/live/thuthu/live-300918a100.m3u8' },
+  {
+    id: 'hotelvictoria',
+    label: 'CAM_02',
+    stream: 'https://cam.idokep.hu/live/hotelvictoria/live-0020520885.m3u8',
+  },
+  {
+    id: 'budapestpark',
+    label: 'CAM_03',
+    stream: 'https://cam.idokep.hu/live/budapestpark/live-c995f18840.m3u8',
+  },
+  {
+    id: 'schonherz1',
+    label: 'CAM_04',
+    stream: 'https://cam.idokep.hu/live/schonherz1/live-c57fd0cbbe.m3u8',
+  },
+]
+
+const EVENT_CHECK_TARGETS = [
+  { key: 'website', kind: 'web', target: 'https://fs0ciety.hu' },
+  { key: 'guestbook-api', kind: 'api', target: `http://localhost:${PORT}/api/traces?limit=1` },
+  ...EVENT_CAMERAS.map((cam) => ({ key: cam.id, kind: 'camera', target: cam.stream, label: cam.label })),
+]
+
+const EVENT_CHECK_INTERVAL_MS = 45_000
+// ~ once every 11 minutes at the interval above - an occasional heartbeat,
+// not a transition, so it shouldn't fire on every single check.
+const HEALTH_CHECK_LOG_EVERY = 15
+const UPTIME_MILESTONES_SEC = [3600, 21600, 86400, 604800]
+
+const eventCheckState = new Map() // key -> { up: bool|null, streak: number }
+const loggedUptimeMilestones = new Set()
+
+function formatUptimeLabel(seconds) {
+  return seconds >= 86400 ? `${seconds / 86400}d` : `${seconds / 3600}h`
+}
+
+async function runEventChecks() {
+  for (const target of EVENT_CHECK_TARGETS) {
+    const result = await checkHttpTarget(target.target, SERVICE_CHECK_TIMEOUT_MS)
+    const prev = eventCheckState.get(target.key) || { up: null, streak: 0 }
+
+    if (result.up) {
+      if (prev.up === null) {
+        if (target.kind === 'camera') logEvent('CAMERA', `${target.label} stream active`)
+        else if (target.kind === 'api') logEvent('API', 'guestbook-api online')
+        else logEvent('SYSTEM', 'website online')
+      } else if (prev.up === false) {
+        if (target.kind === 'camera') logEvent('CAMERA', `${target.label} reconnected`)
+        else if (target.kind === 'api') logEvent('API', 'guestbook-api recovered')
+        else logEvent('SYSTEM', 'website online')
+      }
+      const streak = prev.up === true ? prev.streak + 1 : 1
+      if (target.kind === 'web' && streak % HEALTH_CHECK_LOG_EVERY === 0) {
+        logEvent('SYSTEM', 'website health check passed')
+      }
+      eventCheckState.set(target.key, { up: true, streak })
+    } else {
+      if (prev.up === true && target.kind === 'camera') {
+        logEvent('CAMERA', `stream unavailable: ${target.label}`)
+      }
+      eventCheckState.set(target.key, { up: false, streak: 0 })
+    }
+  }
+
+  for (const seconds of UPTIME_MILESTONES_SEC) {
+    if (process.uptime() >= seconds && !loggedUptimeMilestones.has(seconds)) {
+      loggedUptimeMilestones.add(seconds)
+      logEvent('SYSTEM', `uptime milestone reached: ${formatUptimeLabel(seconds)}`)
+    }
+  }
+}
+
 const app = express()
 app.set('trust proxy', true)
 app.use(cors({ origin: ALLOWED_ORIGINS }))
@@ -255,6 +360,15 @@ app.get('/api/whoami', (req, res) => {
   res.set('Cache-Control', 'no-store')
 
   const ip = getClientIp(req)
+  if (ip) {
+    if (seenVisitorIps.has(ip)) {
+      logEvent('VISITOR', 'returning visitor detected')
+    } else {
+      seenVisitorIps.add(ip)
+      logEvent('VISITOR', 'visitor connected')
+    }
+  }
+
   const country = req.headers['cf-ipcountry']
   // CF-IPCity / CF-Region only appear once "Add visitor location headers"
   // is enabled in Cloudflare (Rules > Managed Transforms).
@@ -297,11 +411,30 @@ app.get('/api/traces', (req, res) => {
   )
 })
 
+app.get('/api/events', (req, res) => {
+  res.set('Cache-Control', 'no-store')
+
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100)
+  const rows = db
+    .prepare('SELECT id, category, message, created_at FROM events ORDER BY id DESC LIMIT ?')
+    .all(limit)
+
+  res.json(
+    rows.map((row) => ({
+      id: row.id,
+      category: row.category,
+      message: row.message,
+      createdAt: row.created_at,
+    })),
+  )
+})
+
 app.post('/api/traces', (req, res) => {
   res.set('Cache-Control', 'no-store')
 
-  if (isRateLimited(getClientIp(req))) {
-    return res.status(429).json({ error: 'rate_limited' })
+  const retryAfterMs = getRateLimitRetryAfterMs(getClientIp(req))
+  if (retryAfterMs > 0) {
+    return res.status(429).json({ error: 'rate_limited', retryAfterMs })
   }
 
   const { alias, message } = req.body || {}
@@ -339,6 +472,8 @@ app.post('/api/traces', (req, res) => {
     .prepare('SELECT id, alias, message, created_at FROM traces WHERE id = ?')
     .get(info.lastInsertRowid)
 
+  logEvent('GUESTBOOK', `trace submitted by ${finalAlias}`)
+
   res.status(201).json({
     id: row.id,
     alias: row.alias,
@@ -370,10 +505,13 @@ app.delete('/api/traces/:id', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'invalid_id' })
   }
 
+  const existing = db.prepare('SELECT alias FROM traces WHERE id = ?').get(id)
   const info = db.prepare('DELETE FROM traces WHERE id = ?').run(id)
   if (info.changes === 0) {
     return res.status(404).json({ error: 'not_found' })
   }
+
+  logEvent('GUESTBOOK', `trace deleted${existing ? ` (${existing.alias})` : ''}`)
 
   res.status(204).end()
 })
@@ -385,4 +523,6 @@ app.get('/api/status', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`fs0ciety server listening on :${PORT}`)
+  runEventChecks()
+  setInterval(runEventChecks, EVENT_CHECK_INTERVAL_MS)
 })

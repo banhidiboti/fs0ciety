@@ -37,6 +37,7 @@ function Guestbook({ ready }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [justSentId, setJustSentId] = useState(null)
+  const [rateLimitSecondsLeft, setRateLimitSecondsLeft] = useState(null)
   const [introDone, setIntroDone] = useState(prefersReducedMotion)
   const [revealCount, setRevealCount] = useState(0)
   const [adminToken, setAdminToken] = useState(null)
@@ -69,6 +70,16 @@ function Guestbook({ ready }) {
     const timer = setTimeout(() => setRevealCount((c) => c + 1), delay)
     return () => clearTimeout(timer)
   }, [entries, introDone, revealCount])
+
+  useEffect(() => {
+    if (rateLimitSecondsLeft === null) return
+    if (rateLimitSecondsLeft <= 0) {
+      setRateLimitSecondsLeft(null)
+      return
+    }
+    const timer = setTimeout(() => setRateLimitSecondsLeft((s) => s - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [rateLimitSecondsLeft])
 
   async function handleAdminLogin(password) {
     setSubmitting(true)
@@ -111,7 +122,7 @@ function Guestbook({ ready }) {
     e.preventDefault()
     const trimmedAlias = alias.trim()
     const trimmedMessage = message.trim()
-    if (!trimmedAlias || !trimmedMessage || submitting) return
+    if (!trimmedAlias || !trimmedMessage || submitting || rateLimitSecondsLeft !== null) return
 
     if (trimmedAlias.toLowerCase() === 'admin') {
       await handleAdminLogin(trimmedMessage)
@@ -136,7 +147,11 @@ function Guestbook({ ready }) {
         body: JSON.stringify({ alias: trimmedAlias, message: trimmedMessage }),
       })
       const body = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(body?.error || 'request_failed')
+      if (!res.ok) {
+        const error = new Error(body?.error || 'request_failed')
+        error.retryAfterMs = body?.retryAfterMs
+        throw error
+      }
 
       setEntries((prev) => prev.map((entry) => (entry.id === tempId ? body : entry)))
       setJustSentId(body.id)
@@ -144,16 +159,19 @@ function Guestbook({ ready }) {
     } catch (err) {
       setEntries((prev) => prev.filter((entry) => entry.id !== tempId))
       setMessage(trimmedMessage)
-      let errorText = 'connection lost — retry?'
-      if (err.message === 'rate_limited') errorText = 'too many transmissions — wait a bit'
-      else if (err.message === 'message contains blocked language') {
-        errorText = 'transmission rejected: watch your language, friend'
+      if (err.message === 'rate_limited') {
+        setRateLimitSecondsLeft(Math.ceil((err.retryAfterMs ?? 5000) / 1000))
+      } else if (err.message === 'message contains blocked language') {
+        setSubmitError('transmission rejected: watch your language, friend')
+      } else {
+        setSubmitError('connection lost — retry?')
       }
-      setSubmitError(errorText)
     } finally {
       setSubmitting(false)
     }
   }
+
+  const formDisabled = submitting || rateLimitSecondsLeft !== null
 
   return (
     <div className="gb-panel">
@@ -167,7 +185,7 @@ function Guestbook({ ready }) {
           onChange={(e) => setAlias(e.target.value)}
           placeholder="handle"
           maxLength={32}
-          disabled={submitting}
+          disabled={formDisabled}
           aria-label="alias"
         />
         <input
@@ -176,14 +194,19 @@ function Guestbook({ ready }) {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="leave a trace..."
           maxLength={280}
-          disabled={submitting}
+          disabled={formDisabled}
           aria-label="message"
         />
-        <button type="submit" className="gb-send" disabled={submitting}>
+        <button type="submit" className="gb-send" disabled={formDisabled}>
           send
         </button>
       </form>
 
+      {rateLimitSecondsLeft !== null && (
+        <p className="gb-status gb-status--error">
+          {`too many transmissions — wait ${rateLimitSecondsLeft}s`}
+        </p>
+      )}
       {submitError && <p className="gb-status gb-status--error">{submitError}</p>}
       {justSentId && <p className="gb-status gb-status--ack">// transmission received</p>}
       {adminMode && <p className="gb-status gb-status--ack">{'// admin mode active'}</p>}

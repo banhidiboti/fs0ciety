@@ -1,0 +1,161 @@
+.cam-panel {
+  --cam-live: #e5484d;
+  width: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.cam-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cam-frame-trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.cam-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+/* ---- grid / fullscreen overlays ---- */
+
+.cam-overlay-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.cam-grid-overlay,
+.cam-fullscreen-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow-y: auto;
+  padding: 24px 32px;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.cam-grid-header,
+.cam-fs-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.cam-fs-header-right {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.cam-close-btn {
+  color: #4b5563;
+}
+
+.cam-close-btn:hover {
+  color: #e05252;
+  background: rgba(224, 82, 82, 0.12);
+}
+
+.cam-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.cam-grid-item {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.cam-grid-item-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cam-grid-item-label {
+  color: #7fe0a0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cam-fs-video-wrap {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.cam-fs-info {
+  width: 100%;
+  max-width: 1100px;
+  margin: 16px auto 0;
+  line-height: 1.8;
+}
+
+.cam-line {
+  color: #7fe0a0;
+}
+
+.cam-line--dim {
+  color: #4b5563;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .cam-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .cam-panel {
+    padding: 20px 16px;
+  }
+
+  .cam-grid-overlay,
+  .cam-fullscreen-overlay {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 400px) {
+  .cam-panel {
+    font-size: 13px;
+  }
+}

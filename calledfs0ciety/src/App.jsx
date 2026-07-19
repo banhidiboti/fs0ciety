@@ -9,6 +9,8 @@ import VisitorTrace from './VisitorTrace.jsx'
 import Guestbook from './Guestbook.jsx'
 import StatusPage from './StatusPage.jsx'
 import HeaderGreeting from './HeaderGreeting.jsx'
+import WebcamPanel from './WebcamPanel.jsx'
+import LiveFeed from './LiveFeed.jsx'
 import './App.css'
 
 const FOOTER_CREDITS = [
@@ -49,16 +51,9 @@ const FOOTER_CREDITS = [
   },
 ]
 
-const PANEL_TABS = [
-  { key: 'trace', label: 'Leave a trace' },
-  { key: 'status', label: 'System status' },
-  { key: 'info', label: 'Your info' },
-]
-
 function App() {
   const [bootReady, setBootReady] = useState(false)
   const handleBootComplete = useCallback(() => setBootReady(true), [])
-  const [openPanel, setOpenPanel] = useState('status')
 
   return (
     <>
@@ -68,26 +63,16 @@ function App() {
 
       <BootIntro onComplete={handleBootComplete}>
         <main id="blank-page">
-          <div className="panel-tabs">
-            {PANEL_TABS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                className={`panel-tab${openPanel === key ? ' active' : ''}`}
-                onClick={() => setOpenPanel(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <div id="panel-row">
-            <div className={`panel-slot${openPanel === 'trace' ? ' panel-slot--open' : ''}`}>
+            <div className="panel-col">
               <Guestbook ready={bootReady} />
+              <LiveFeed ready={bootReady} />
             </div>
-            <div className={`panel-slot${openPanel === 'status' ? ' panel-slot--open' : ''}`}>
+            <div className="panel-col panel-col--center">
+              <WebcamPanel ready={bootReady} />
+            </div>
+            <div className="panel-col">
               <StatusPage ready={bootReady} />
-            </div>
-            <div className={`panel-slot${openPanel === 'info' ? ' panel-slot--open' : ''}`}>
               <VisitorTrace ready={bootReady} />
             </div>
           </div>

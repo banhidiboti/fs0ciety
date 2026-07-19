@@ -1,0 +1,147 @@
+.cam-frame {
+  --cam-filter: contrast(1.1) brightness(0.9);
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(62, 207, 102, 0.3);
+  border-radius: 0;
+}
+
+.cam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+  filter: var(--cam-filter);
+}
+
+.cam-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cam-overlay-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: var(--cam-filter) brightness(0.5);
+}
+
+.cam-overlay-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #7fe0a0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.cam-overlay-status {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.cam-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.06) 0px,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.cam-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cam-title {
+  color: #3ecf66;
+  font-weight: 600;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cam-nav-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #3ecf66;
+  font-family: var(--mono);
+  font-size: inherit;
+  font-weight: 600;
+  padding: 0 4px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.cam-nav-btn:hover {
+  color: #7fe0a0;
+  background: rgba(62, 207, 102, 0.12);
+}
+
+.cam-nav-btn:focus-visible {
+  outline: 1px solid #3ecf66;
+  outline-offset: 1px;
+}
+
+.cam-live {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cam-live, #e5484d);
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.cam-live--compact {
+  font-size: 11px;
+}
+
+.cam-live-dot {
+  display: inline-block;
+  animation: cam-live-blink 2s ease-in-out infinite;
+}
+
+.cam-status-text {
+  flex-shrink: 0;
+  color: #4b5563;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@keyframes cam-live-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
