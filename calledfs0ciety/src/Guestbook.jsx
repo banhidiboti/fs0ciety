@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { prefersReducedMotion } from './motion.js'
+import BootReveal, { BootCursor } from './BootReveal.jsx'
 import './Guestbook.css'
 
 const ACK_MS = 2500
-const REVEAL_MS_MIN = 80
-const REVEAL_MS_MAX = 160
 const ALIAS_STORAGE_KEY = 'fs0ciety:guestbook-alias'
 
 function loadSavedAlias() {
@@ -38,8 +36,6 @@ function Guestbook({ ready }) {
   const [submitError, setSubmitError] = useState(null)
   const [justSentId, setJustSentId] = useState(null)
   const [rateLimitSecondsLeft, setRateLimitSecondsLeft] = useState(null)
-  const [introDone, setIntroDone] = useState(prefersReducedMotion)
-  const [revealCount, setRevealCount] = useState(0)
   const [adminToken, setAdminToken] = useState(null)
   const adminMode = adminToken !== null
 
@@ -59,17 +55,6 @@ function Guestbook({ ready }) {
     if (!ready) return
     loadTraces()
   }, [ready])
-
-  useEffect(() => {
-    if (!entries || introDone) return
-    if (revealCount >= entries.length) {
-      setIntroDone(true)
-      return
-    }
-    const delay = REVEAL_MS_MIN + Math.random() * (REVEAL_MS_MAX - REVEAL_MS_MIN)
-    const timer = setTimeout(() => setRevealCount((c) => c + 1), delay)
-    return () => clearTimeout(timer)
-  }, [entries, introDone, revealCount])
 
   useEffect(() => {
     if (rateLimitSecondsLeft === null) return
@@ -224,24 +209,34 @@ function Guestbook({ ready }) {
         {loadState === 'ready' && entries.length === 0 && (
           <p className="gb-status">no traces yet. be the first.</p>
         )}
-        {(introDone ? entries : entries?.slice(0, revealCount))?.map((entry, i, visible) => (
-          <div className={`gb-line${entry.pending ? ' gb-line--pending' : ''}`} key={entry.id}>
-            <span className="gb-ts">[{formatEntryTimestamp(entry.createdAt)}]</span>{' '}
-            <span className="gb-alias">{`<${entry.alias}>`}</span>{' '}
-            <span className="gb-msg">{entry.message}</span>
-            {adminMode && !entry.pending && (
-              <button
-                type="button"
-                className="gb-delete"
-                onClick={() => handleDelete(entry.id)}
-                aria-label={`delete entry from ${entry.alias}`}
-              >
-                [x]
-              </button>
-            )}
-            {!introDone && i === visible.length - 1 && <span className="gb-cursor" />}
-          </div>
-        ))}
+        {entries && (
+          <BootReveal count={entries.length}>
+            {({ revealCount, introDone }) => {
+              const visible = introDone ? entries : entries.slice(0, revealCount)
+              return visible.map((entry, i) => (
+                <div
+                  className={`gb-line${entry.pending ? ' gb-line--pending' : ''}`}
+                  key={entry.id}
+                >
+                  <span className="gb-ts">[{formatEntryTimestamp(entry.createdAt)}]</span>{' '}
+                  <span className="gb-alias">{`<${entry.alias}>`}</span>{' '}
+                  <span className="gb-msg">{entry.message}</span>
+                  {adminMode && !entry.pending && (
+                    <button
+                      type="button"
+                      className="gb-delete"
+                      onClick={() => handleDelete(entry.id)}
+                      aria-label={`delete entry from ${entry.alias}`}
+                    >
+                      [x]
+                    </button>
+                  )}
+                  {!introDone && i === visible.length - 1 && <BootCursor />}
+                </div>
+              ))
+            }}
+          </BootReveal>
+        )}
       </div>
     </div>
   )

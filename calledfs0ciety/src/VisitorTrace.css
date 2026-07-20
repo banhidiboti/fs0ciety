@@ -27,22 +27,6 @@
   font-weight: 600;
 }
 
-.trace-cursor {
-  display: inline-block;
-  width: 0.55em;
-  height: 1em;
-  margin-left: 2px;
-  vertical-align: -0.15em;
-  background: #3ecf66;
-  animation: trace-blink 1s steps(1) infinite;
-}
-
-@keyframes trace-blink {
-  50% {
-    opacity: 0;
-  }
-}
-
 @media (max-width: 768px) {
   .trace-panel {
     padding: 20px 16px;

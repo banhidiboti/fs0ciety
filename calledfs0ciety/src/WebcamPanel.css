@@ -49,11 +49,20 @@
   position: absolute;
   inset: 0;
   background: #000;
-  overflow-y: auto;
   padding: 24px 32px;
   box-sizing: border-box;
   font-family: var(--mono);
   font-size: 14px;
+}
+
+.cam-fullscreen-overlay {
+  overflow-y: auto;
+}
+
+.cam-grid-overlay {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .cam-grid-header,
@@ -62,7 +71,8 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .cam-fs-header-right {
@@ -82,14 +92,20 @@
 }
 
 .cam-grid {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: minmax(150px, 1fr);
+  gap: 16px;
+  overflow-y: auto;
 }
 
 .cam-grid-item {
+  position: relative;
   display: block;
   width: 100%;
+  height: 100%;
   padding: 0;
   margin: 0;
   border: none;
@@ -99,12 +115,29 @@
   cursor: pointer;
 }
 
+.cam-grid-item:hover .cam-frame,
+.cam-grid-item:focus-visible .cam-frame {
+  border-color: #3ecf66;
+}
+
+.cam-grid-item:hover .cam-idle-indicator span,
+.cam-grid-item:focus-visible .cam-idle-indicator span {
+  color: #baf5cf;
+  transform: scale(1.15);
+}
+
 .cam-grid-item-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 8px;
+  padding: 4px 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent);
+  pointer-events: none;
 }
 
 .cam-grid-item-label {
@@ -113,6 +146,18 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .cam-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .cam-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .cam-fs-video-wrap {
@@ -135,12 +180,6 @@
 .cam-line--dim {
   color: #4b5563;
   font-size: 12px;
-}
-
-@media (max-width: 900px) {
-  .cam-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 768px) {

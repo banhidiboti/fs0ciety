@@ -74,7 +74,25 @@ function stripHtml(value) {
   return value.replace(/<[^>]*>/g, '').trim()
 }
 
-const seenVisitorIps = new Set()
+// At most one VIS event per visitor per window, so a browsing session full
+// of page loads/reloads doesn't turn the live feed into pure VIS spam.
+const VISITOR_DEDUP_WINDOW_MS = 10 * 60 * 1000
+const visitorLastLoggedAt = new Map() // ip -> ms timestamp of last VIS log
+
+const LOOPBACK_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+
+function isLoopbackIp(ip) {
+  return !ip || LOOPBACK_IPS.has(ip)
+}
+
+function maybeLogVisitorEvent(ip) {
+  const now = Date.now()
+  const last = visitorLastLoggedAt.get(ip)
+  const isNew = last === undefined
+  if (!isNew && now - last < VISITOR_DEDUP_WINDOW_MS) return
+  visitorLastLoggedAt.set(ip, now)
+  logEvent('VISITOR', isNew ? 'visitor connected' : 'returning visitor detected')
+}
 
 // 5 posts allowed back-to-back, then a short 5s cooldown rather than a long
 // block — the window slides, so as soon as the oldest of the 5 timestamps
@@ -360,13 +378,9 @@ app.get('/api/whoami', (req, res) => {
   res.set('Cache-Control', 'no-store')
 
   const ip = getClientIp(req)
-  if (ip) {
-    if (seenVisitorIps.has(ip)) {
-      logEvent('VISITOR', 'returning visitor detected')
-    } else {
-      seenVisitorIps.add(ip)
-      logEvent('VISITOR', 'visitor connected')
-    }
+  const isOwner = req.query.owner === '1'
+  if (ip && !isOwner && !isLoopbackIp(ip)) {
+    maybeLogVisitorEvent(ip)
   }
 
   const country = req.headers['cf-ipcountry']
@@ -519,6 +533,13 @@ app.delete('/api/traces/:id', requireAdmin, (req, res) => {
 app.get('/api/status', async (req, res) => {
   res.set('Cache-Control', 'no-store')
   res.json(await getStatusPayload())
+})
+
+const distPath = join(__dirname, '..', 'dist')
+app.use(express.static(distPath))
+
+app.get(/^(?!\/api).*/, (req, res) => {
+  res.sendFile(join(distPath, 'index.html'))
 })
 
 app.listen(PORT, () => {

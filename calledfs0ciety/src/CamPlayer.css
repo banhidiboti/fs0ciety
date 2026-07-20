@@ -18,6 +18,16 @@
   filter: var(--cam-filter);
 }
 
+.cam-video--cover {
+  object-fit: cover;
+}
+
+/* Grid preview cells: fill the grid cell instead of a fixed 16:9 box. */
+.cam-frame--grid {
+  aspect-ratio: auto;
+  height: 100%;
+}
+
 .cam-overlay {
   position: absolute;
   inset: 0;
@@ -33,6 +43,28 @@
   height: 100%;
   object-fit: contain;
   filter: var(--cam-filter) brightness(0.5);
+}
+
+.cam-overlay-poster--cover {
+  object-fit: cover;
+}
+
+.cam-idle-indicator {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #7fe0a0;
+  font-size: 28px;
+}
+
+.cam-idle-indicator span {
+  display: inline-block;
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease;
 }
 
 .cam-overlay-text {

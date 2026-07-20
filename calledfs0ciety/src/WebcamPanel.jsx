@@ -4,34 +4,83 @@ import './WebcamPanel.css'
 
 const CAMERAS = [
   {
-    id: 'thuthu',
-    label: 'CAM_01 :: BUDAPEST',
-    shortLabel: 'CAM_01',
-    stream: 'https://cam.idokep.hu/live/thuthu/live-300918a100.m3u8',
-    poster: 'https://cam.idokep.hu/cam/thuthu/thumbnail.jpg',
-  },
-  {
     id: 'hotelvictoria',
-    label: 'CAM_02 :: BUDAPEST',
-    shortLabel: 'CAM_02',
     stream: 'https://cam.idokep.hu/live/hotelvictoria/live-0020520885.m3u8',
     poster: 'https://cam.idokep.hu/cam/hotelvictoria/thumbnail.jpg',
   },
   {
+    id: 'thuthu',
+    stream: 'https://cam.idokep.hu/live/thuthu/live-300918a100.m3u8',
+    poster: 'https://cam.idokep.hu/cam/thuthu/thumbnail.jpg',
+  },
+  {
     id: 'budapestpark',
-    label: 'CAM_03 :: BUDAPEST',
-    shortLabel: 'CAM_03',
     stream: 'https://cam.idokep.hu/live/budapestpark/live-c995f18840.m3u8',
     poster: 'https://cam.idokep.hu/cam/budapestpark/thumbnail.jpg',
   },
   {
     id: 'schonherz1',
-    label: 'CAM_04 :: BUDAPEST',
-    shortLabel: 'CAM_04',
     stream: 'https://cam.idokep.hu/live/schonherz1/live-c57fd0cbbe.m3u8',
     poster: 'https://cam.idokep.hu/cam/schonherz1/thumbnail.jpg',
   },
+  {
+    id: 'tihany_onkormanyzat',
+    stream: 'https://cam.idokep.hu/live/tihany_onkormanyzat/live-5e74212f13.m3u8',
+    poster: 'https://cam.idokep.hu/cam/tihany_onkormanyzat/thumbnail.jpg',
+  },
+  {
+    id: 'internetx',
+    stream: 'https://cam.idokep.hu/live/internetx/live-3503247f4f.m3u8',
+    poster: 'https://cam.idokep.hu/cam/internetx/thumbnail.jpg',
+  },
+  {
+    id: 'mordok',
+    stream: 'https://cam.idokep.hu/live/mordok/live-8b39c4eac8.m3u8',
+    poster: 'https://cam.idokep.hu/cam/mordok/thumbnail.jpg',
+  },
+  {
+    id: 'fary24',
+    stream: 'https://cam.idokep.hu/live/fary24/live-0584bec1cb.m3u8',
+    poster: 'https://cam.idokep.hu/cam/fary24/thumbnail.jpg',
+  },
+  {
+    id: 'letyi',
+    stream: 'https://cam.idokep.hu/live/letyi/live-7e2d62901e.m3u8',
+    poster: 'https://cam.idokep.hu/cam/letyi/thumbnail.jpg',
+  },
+  {
+    id: 'dmjvcam3',
+    stream: 'https://cam.idokep.hu/live/dmjvcam3/live-3b223aee5c.m3u8',
+    poster: 'https://cam.idokep.hu/cam/dmjvcam3/thumbnail.jpg',
+  },
+  {
+    id: 'elco',
+    stream: 'https://cam.idokep.hu/live/elco/live-8a159894a6.m3u8',
+    poster: 'https://cam.idokep.hu/cam/elco/thumbnail.jpg',
+  },
+  {
+    id: 'leonetti3',
+    stream: 'https://cam.idokep.hu/live/leonetti3/live-d9025f9e0e.m3u8',
+    poster: 'https://cam.idokep.hu/cam/leonetti3/thumbnail.jpg',
+  },
+  {
+    id: 'volgyvaros6',
+    stream: 'https://cam.idokep.hu/live/volgyvaros6/live-deaa235058.m3u8',
+    poster: 'https://cam.idokep.hu/cam/volgyvaros6/thumbnail.jpg',
+    // burned-in sponsor text at the top edge of the source image
+    cropTop: 9,
+  },
+  {
+    id: 'volgyvaros5',
+    stream: 'https://cam.idokep.hu/live/volgyvaros5/live-12d6abfe37.m3u8',
+    poster: 'https://cam.idokep.hu/cam/volgyvaros5/thumbnail.jpg',
+    cropTop: 18,
+  },
 ]
+
+function camLabel(index) {
+  return `CAM_${String(index + 1).padStart(2, '0')}`
+}
 
 function formatClock(date) {
   const pad = (n) => String(n).padStart(2, '0')
@@ -46,7 +95,7 @@ function streamHost(url) {
   }
 }
 
-function WebcamPanel({ ready }) {
+function WebcamPanel({ ready, streaming = true }) {
   const [view, setView] = useState('panel')
   const [activeIndex, setActiveIndex] = useState(0)
   const [camStates, setCamStates] = useState({})
@@ -62,6 +111,10 @@ function WebcamPanel({ ready }) {
     setCamStates((prev) => ({ ...prev, [camId]: state }))
     setLastUpdate(new Date())
   }
+
+  useEffect(() => {
+    if (!streaming) setView('panel')
+  }, [streaming])
 
   useEffect(() => {
     if (view === 'panel') return
@@ -107,7 +160,7 @@ function WebcamPanel({ ready }) {
           >
             [&lt;]
           </button>
-          <span className="cam-title">{`> ${activeCamera.shortLabel}`}</span>
+          <span className="cam-title">{`> ${camLabel(activeIndex)}`}</span>
           <button type="button" className="cam-nav-btn" aria-label="next camera" onClick={goNext}>
             [&gt;]
           </button>
@@ -124,6 +177,7 @@ function WebcamPanel({ ready }) {
         <CamPlayer
           camera={activeCamera}
           ready={ready}
+          active={streaming}
           onStateChange={(state) => handleCamState(activeCamera.id, state)}
         />
       </button>
@@ -144,27 +198,20 @@ function WebcamPanel({ ready }) {
                 </button>
               </div>
               <div className="cam-grid">
-                {CAMERAS.map((cam, i) => {
-                  const state = camStates[cam.id] ?? { status: 'connecting' }
-                  return (
-                    <button
-                      key={cam.id}
-                      type="button"
-                      className="cam-grid-item"
-                      aria-label={`open ${cam.label} fullscreen`}
-                      onClick={() => openFullscreen(i)}
-                    >
-                      <CamPlayer
-                        camera={cam}
-                        onStateChange={(s) => handleCamState(cam.id, s)}
-                      />
-                      <div className="cam-grid-item-footer">
-                        <span className="cam-grid-item-label">{cam.label}</span>
-                        <CamStatusIndicator status={state.status} compact />
-                      </div>
-                    </button>
-                  )
-                })}
+                {CAMERAS.map((cam, i) => (
+                  <button
+                    key={cam.id}
+                    type="button"
+                    className="cam-grid-item"
+                    aria-label={`open ${camLabel(i)} fullscreen`}
+                    onClick={() => openFullscreen(i)}
+                  >
+                    <CamPlayer camera={cam} active={false} fit="cover" className="cam-frame--grid" />
+                    <div className="cam-grid-item-footer">
+                      <span className="cam-grid-item-label">{camLabel(i)}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -181,7 +228,7 @@ function WebcamPanel({ ready }) {
                   >
                     [&lt;]
                   </button>
-                  <span className="cam-title">{`> ${activeCamera.label}`}</span>
+                  <span className="cam-title">{`> ${camLabel(activeIndex)}`}</span>
                   <button
                     type="button"
                     className="cam-nav-btn"

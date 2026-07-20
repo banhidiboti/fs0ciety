@@ -113,19 +113,3 @@
   min-width: 48px;
   text-align: right;
 }
-
-.status-cursor {
-  display: inline-block;
-  width: 0.55em;
-  height: 1em;
-  margin-left: 4px;
-  vertical-align: -0.15em;
-  background: #3ecf66;
-  animation: status-blink 1s steps(1) infinite;
-}
-
-@keyframes status-blink {
-  50% {
-    opacity: 0;
-  }
-}

@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
-import { prefersReducedMotion } from './motion.js'
+import BootReveal, { BootCursor } from './BootReveal.jsx'
+import { isOwner } from './owner.js'
 import './VisitorTrace.css'
-
-const CHAR_MS_MIN = 12
-const CHAR_MS_MAX = 30
-const LINE_PAUSE_MS = 180
 
 function detectBrowser(ua) {
   const checks = [
@@ -107,7 +104,7 @@ async function detectCpuArch() {
 
 async function fetchWhoami() {
   try {
-    const res = await fetch('/api/whoami')
+    const res = await fetch(`/api/whoami${isOwner() ? '?owner=1' : ''}`)
     if (!res.ok) return null
     return await res.json()
   } catch {
@@ -115,7 +112,9 @@ async function fetchWhoami() {
   }
 }
 
-async function collectTraceLines() {
+// Everything readable straight from navigator/screen — no network round trip,
+// so this resolves essentially immediately.
+async function collectLocalTraceLines() {
   const lines = [{ kind: 'header', text: 'YOUR INFORMATIONS:' }]
 
   const ua = navigator.userAgent
@@ -168,22 +167,27 @@ async function collectTraceLines() {
     })
   }
 
-  const whoami = await fetchWhoami()
-
   lines.push({ kind: 'data', text: `LOCAL TIME: ${formatLocalTime(new Date())}` })
 
-  if (whoami?.ip) {
-    lines.push({ kind: 'data', text: `IP: ${whoami.ip}` })
+  return lines
+}
 
-    if (whoami.city || whoami.country) {
-      const location = [whoami.city, whoami.country].filter(Boolean).join(', ')
-      lines.push({ kind: 'data', text: `LOCATION: ${location}` })
-    }
+// The only field that needs the network — collected separately so it never
+// holds up the fields above.
+async function collectNetworkTraceLines() {
+  const whoami = await fetchWhoami()
+  if (!whoami?.ip) return []
 
-    if (whoami.asn) {
-      const network = whoami.asOrganization ? `${whoami.asn} (${whoami.asOrganization})` : whoami.asn
-      lines.push({ kind: 'data', text: `NETWORK: ${network}` })
-    }
+  const lines = [{ kind: 'data', text: `IP: ${whoami.ip}` }]
+
+  if (whoami.city || whoami.country) {
+    const location = [whoami.city, whoami.country].filter(Boolean).join(', ')
+    lines.push({ kind: 'data', text: `LOCATION: ${location}` })
+  }
+
+  if (whoami.asn) {
+    const network = whoami.asOrganization ? `${whoami.asn} (${whoami.asOrganization})` : whoami.asn
+    lines.push({ kind: 'data', text: `NETWORK: ${network}` })
   }
 
   return lines
@@ -191,57 +195,45 @@ async function collectTraceLines() {
 
 function VisitorTrace({ ready }) {
   const [lines, setLines] = useState(null)
-  const [lineIndex, setLineIndex] = useState(0)
-  const [charCount, setCharCount] = useState(0)
-  const [instant] = useState(prefersReducedMotion)
 
   useEffect(() => {
     if (!ready) return
     let cancelled = false
-    collectTraceLines().then((collected) => {
-      if (!cancelled) setLines(collected)
+
+    collectLocalTraceLines().then((local) => {
+      if (cancelled) return
+      setLines(local)
+
+      collectNetworkTraceLines().then((extra) => {
+        if (!cancelled && extra.length) {
+          setLines((prev) => [...(prev || []), ...extra])
+        }
+      })
     })
+
     return () => {
       cancelled = true
     }
   }, [ready])
 
-  useEffect(() => {
-    if (!lines || instant) return
-    if (lineIndex >= lines.length) return
-
-    const currentText = lines[lineIndex].text
-    if (charCount < currentText.length) {
-      const delay = CHAR_MS_MIN + Math.random() * (CHAR_MS_MAX - CHAR_MS_MIN)
-      const timer = setTimeout(() => setCharCount((c) => c + 1), delay)
-      return () => clearTimeout(timer)
-    }
-
-    const timer = setTimeout(() => {
-      setLineIndex((i) => i + 1)
-      setCharCount(0)
-    }, LINE_PAUSE_MS)
-    return () => clearTimeout(timer)
-  }, [lines, lineIndex, charCount, instant])
-
   if (!lines) return null
 
-  const finished = instant || lineIndex >= lines.length
-  const activeIndex = finished ? lines.length - 1 : lineIndex
-
   return (
-    <div className="trace-panel">
-      {lines.map((line, i) => {
-        if (i > activeIndex) return null
-        const text = i === activeIndex && !finished ? line.text.slice(0, charCount) : line.text
+    <BootReveal count={lines.length}>
+      {({ revealCount, introDone }) => {
+        const visible = introDone ? lines : lines.slice(0, revealCount)
         return (
-          <div className={`trace-line trace-line--${line.kind}`} key={line.text}>
-            <span>{text}</span>
-            {i === activeIndex && <span className="trace-cursor" />}
+          <div className="trace-panel">
+            {visible.map((line, i) => (
+              <div className={`trace-line trace-line--${line.kind}`} key={line.text}>
+                <span>{line.text}</span>
+                {!introDone && i === visible.length - 1 && <BootCursor />}
+              </div>
+            ))}
           </div>
         )
-      })}
-    </div>
+      }}
+    </BootReveal>
   )
 }
 

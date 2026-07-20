@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import reactLogo from './assets/react.svg'
 import nodejsLogo from './assets/nodejs-stacked-light.svg'
 import raspberryPiLogo from './assets/raspberrypilogo.png'
@@ -11,6 +11,7 @@ import StatusPage from './StatusPage.jsx'
 import HeaderGreeting from './HeaderGreeting.jsx'
 import WebcamPanel from './WebcamPanel.jsx'
 import LiveFeed from './LiveFeed.jsx'
+import { captureOwnerFlagFromUrl } from './owner.js'
 import './App.css'
 
 const FOOTER_CREDITS = [
@@ -51,9 +52,43 @@ const FOOTER_CREDITS = [
   },
 ]
 
+const PANEL_TABS_ROW1 = [
+  { key: 'trace', label: 'Leave a trace' },
+  { key: 'status', label: 'System status' },
+  { key: 'info', label: 'Your info' },
+]
+const PANEL_TABS_ROW2 = [
+  { key: 'log', label: 'Log' },
+  { key: 'cams', label: 'Cams' },
+]
+const MOBILE_BREAKPOINT = 1000
+
+function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= breakpoint,
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`)
+    const onChange = () => setIsMobile(mql.matches)
+    onChange()
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [breakpoint])
+
+  return isMobile
+}
+
 function App() {
   const [bootReady, setBootReady] = useState(false)
   const handleBootComplete = useCallback(() => setBootReady(true), [])
+  const [openPanel, setOpenPanel] = useState('status')
+  const isMobile = useIsMobile()
+  const camsStreaming = !isMobile || openPanel === 'cams'
+
+  useEffect(() => {
+    captureOwnerFlagFromUrl()
+  }, [])
 
   return (
     <>
@@ -63,17 +98,53 @@ function App() {
 
       <BootIntro onComplete={handleBootComplete}>
         <main id="blank-page">
+          <div className="panel-tabs-group">
+            <div className="panel-tabs">
+              {PANEL_TABS_ROW1.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`panel-tab${openPanel === key ? ' active' : ''}`}
+                  onClick={() => setOpenPanel(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="panel-tabs">
+              {PANEL_TABS_ROW2.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`panel-tab${openPanel === key ? ' active' : ''}`}
+                  onClick={() => setOpenPanel(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div id="panel-row">
             <div className="panel-col">
-              <Guestbook ready={bootReady} />
-              <LiveFeed ready={bootReady} />
+              <div className={`panel-item${openPanel === 'trace' ? ' panel-item--active' : ''}`}>
+                <Guestbook ready={bootReady} />
+              </div>
+              <div className={`panel-item${openPanel === 'log' ? ' panel-item--active' : ''}`}>
+                <LiveFeed ready={bootReady} />
+              </div>
             </div>
             <div className="panel-col panel-col--center">
-              <WebcamPanel ready={bootReady} />
+              <div className={`panel-item${openPanel === 'cams' ? ' panel-item--active' : ''}`}>
+                <WebcamPanel ready={bootReady} streaming={camsStreaming} />
+              </div>
             </div>
-            <div className="panel-col">
-              <StatusPage ready={bootReady} />
-              <VisitorTrace ready={bootReady} />
+            <div className="panel-col panel-col--right">
+              <div className={`panel-item${openPanel === 'status' ? ' panel-item--active' : ''}`}>
+                <StatusPage ready={bootReady} />
+              </div>
+              <div className={`panel-item${openPanel === 'info' ? ' panel-item--active' : ''}`}>
+                <VisitorTrace ready={bootReady} />
+              </div>
             </div>
           </div>
         </main>

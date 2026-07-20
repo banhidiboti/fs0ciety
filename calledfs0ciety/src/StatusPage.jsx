@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
-import { prefersReducedMotion } from './motion.js'
+import BootReveal, { BootCursor } from './BootReveal.jsx'
 import './StatusPage.css'
 
 const POLL_MS = 15000
 const BAR_WIDTH = 10
-const REVEAL_MS_MIN = 90
-const REVEAL_MS_MAX = 170
 
 function formatUptime(totalSeconds) {
   const days = Math.floor(totalSeconds / 86400)
@@ -32,8 +30,6 @@ function StatusPage({ ready }) {
   const [status, setStatus] = useState(null)
   const [offline, setOffline] = useState(false)
   const [lastChecked, setLastChecked] = useState(null)
-  const [introDone, setIntroDone] = useState(prefersReducedMotion)
-  const [revealCount, setRevealCount] = useState(0)
 
   async function loadStatus() {
     try {
@@ -53,21 +49,6 @@ function StatusPage({ ready }) {
     const id = setInterval(loadStatus, POLL_MS)
     return () => clearInterval(id)
   }, [ready])
-
-  const totalRows = status
-    ? 6 + (status.resources.cpuTempC != null ? 1 : 0) + status.services.length
-    : 0
-
-  useEffect(() => {
-    if (!status || introDone) return
-    if (revealCount >= totalRows) {
-      setIntroDone(true)
-      return
-    }
-    const delay = REVEAL_MS_MIN + Math.random() * (REVEAL_MS_MAX - REVEAL_MS_MIN)
-    const timer = setTimeout(() => setRevealCount((c) => c + 1), delay)
-    return () => clearTimeout(timer)
-  }, [status, introDone, revealCount, totalRows])
 
   if (!status) {
     return (
@@ -99,91 +80,98 @@ function StatusPage({ ready }) {
     ...services.map((svc) => `svc-${svc.name}`),
     'last-checked',
   ]
-  const shown = (key) => introDone || rowKeys.indexOf(key) < revealCount
-  const cursorAfter = (key) => !introDone && rowKeys.indexOf(key) === revealCount - 1
 
   return (
-    <div className="status-panel">
-      {shown('header') && (
-        <div className="status-line status-line--header">
-          SYSTEM STATUS — fs0ciety.hu
-          {cursorAfter('header') && <span className="status-cursor" />}
-        </div>
-      )}
+    <BootReveal count={rowKeys.length}>
+      {({ revealCount, introDone }) => {
+        const shown = (key) => introDone || rowKeys.indexOf(key) < revealCount
+        const cursorAfter = (key) => !introDone && rowKeys.indexOf(key) === revealCount - 1
 
-      {offline && <p className="status-msg status-msg--error">STATUS FEED OFFLINE</p>}
+        return (
+          <div className="status-panel">
+            {shown('header') && (
+              <div className="status-line status-line--header">
+                SYSTEM STATUS — fs0ciety.hu
+                {cursorAfter('header') && <BootCursor />}
+              </div>
+            )}
 
-      {shown('uptime') && (
-        <div className="status-line">
-          UP {formatUptime(host.osUptimeSec)}
-          {cursorAfter('uptime') && <span className="status-cursor" />}
-        </div>
-      )}
-      {shown('meta') && (
-        <div className="status-line status-line--dim">
-          process up {formatUptime(host.processUptimeSec)} · {host.hostname} · {host.platform}/
-          {host.arch}
-          {cursorAfter('meta') && <span className="status-cursor" />}
-        </div>
-      )}
+            {offline && <p className="status-msg status-msg--error">STATUS FEED OFFLINE</p>}
 
-      <div className="status-section">
-        {shown('cpu-bar') && (
-          <div className="status-bar-row">
-            <span className="status-bar-label">CPU LOAD</span>
-            <span className="status-bar">
-              [<span className="status-bar-fill">{asciiBarParts(cpuFraction).filled}</span>
-              <span className="status-bar-empty">{asciiBarParts(cpuFraction).empty}</span>]
-            </span>
-            <span className="status-bar-pct">{cpuPct}%</span>
-            {cursorAfter('cpu-bar') && <span className="status-cursor" />}
-          </div>
-        )}
-        {shown('mem-bar') && (
-          <div className="status-bar-row">
-            <span className="status-bar-label">MEMORY</span>
-            <span className="status-bar">
-              [<span className="status-bar-fill">{asciiBarParts(memFraction).filled}</span>
-              <span className="status-bar-empty">{asciiBarParts(memFraction).empty}</span>]
-            </span>
-            <span className="status-bar-pct">{memPct}%</span>
-            {cursorAfter('mem-bar') && <span className="status-cursor" />}
-          </div>
-        )}
-        {hasTemp && shown('temp') && (
-          <div className="status-line status-line--dim">
-            CPU TEMP: {resources.cpuTempC}°C
-            {cursorAfter('temp') && <span className="status-cursor" />}
-          </div>
-        )}
-      </div>
+            {shown('uptime') && (
+              <div className="status-line">
+                UP {formatUptime(host.osUptimeSec)}
+                {cursorAfter('uptime') && <BootCursor />}
+              </div>
+            )}
+            {shown('meta') && (
+              <div className="status-line status-line--dim">
+                process up {formatUptime(host.processUptimeSec)} · {host.hostname} ·{' '}
+                {host.platform}/{host.arch}
+                {cursorAfter('meta') && <BootCursor />}
+              </div>
+            )}
 
-      <div className="status-section">
-        {services.map((svc) => {
-          const key = `svc-${svc.name}`
-          if (!shown(key)) return null
-          return (
-            <div className="status-service" key={svc.name}>
-              <span className={`status-tag status-tag--${svc.up ? 'up' : 'down'}`}>
-                {svc.up ? 'UP' : 'DOWN'}
-              </span>
-              <span className="status-service-name">{svc.name}</span>
-              <span className="status-service-time">
-                {svc.responseTimeMs != null ? `${svc.responseTimeMs}ms` : '--'}
-              </span>
-              {cursorAfter(key) && <span className="status-cursor" />}
+            <div className="status-section">
+              {shown('cpu-bar') && (
+                <div className="status-bar-row">
+                  <span className="status-bar-label">CPU LOAD</span>
+                  <span className="status-bar">
+                    [<span className="status-bar-fill">{asciiBarParts(cpuFraction).filled}</span>
+                    <span className="status-bar-empty">{asciiBarParts(cpuFraction).empty}</span>]
+                  </span>
+                  <span className="status-bar-pct">{cpuPct}%</span>
+                  {cursorAfter('cpu-bar') && <BootCursor />}
+                </div>
+              )}
+              {shown('mem-bar') && (
+                <div className="status-bar-row">
+                  <span className="status-bar-label">MEMORY</span>
+                  <span className="status-bar">
+                    [<span className="status-bar-fill">{asciiBarParts(memFraction).filled}</span>
+                    <span className="status-bar-empty">{asciiBarParts(memFraction).empty}</span>]
+                  </span>
+                  <span className="status-bar-pct">{memPct}%</span>
+                  {cursorAfter('mem-bar') && <BootCursor />}
+                </div>
+              )}
+              {hasTemp && shown('temp') && (
+                <div className="status-line status-line--dim">
+                  CPU TEMP: {resources.cpuTempC}°C
+                  {cursorAfter('temp') && <BootCursor />}
+                </div>
+              )}
             </div>
-          )
-        })}
-      </div>
 
-      {lastChecked && shown('last-checked') && (
-        <div className="status-line status-line--dim">
-          last checked: {formatClock(lastChecked)}
-          {cursorAfter('last-checked') && <span className="status-cursor" />}
-        </div>
-      )}
-    </div>
+            <div className="status-section">
+              {services.map((svc) => {
+                const key = `svc-${svc.name}`
+                if (!shown(key)) return null
+                return (
+                  <div className="status-service" key={svc.name}>
+                    <span className={`status-tag status-tag--${svc.up ? 'up' : 'down'}`}>
+                      {svc.up ? 'UP' : 'DOWN'}
+                    </span>
+                    <span className="status-service-name">{svc.name}</span>
+                    <span className="status-service-time">
+                      {svc.responseTimeMs != null ? `${svc.responseTimeMs}ms` : '--'}
+                    </span>
+                    {cursorAfter(key) && <BootCursor />}
+                  </div>
+                )
+              })}
+            </div>
+
+            {lastChecked && shown('last-checked') && (
+              <div className="status-line status-line--dim">
+                last checked: {formatClock(lastChecked)}
+                {cursorAfter('last-checked') && <BootCursor />}
+              </div>
+            )}
+          </div>
+        )
+      }}
+    </BootReveal>
   )
 }
 
