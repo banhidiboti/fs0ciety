@@ -56,6 +56,28 @@ function Guestbook({ ready }) {
     loadTraces()
   }, [ready])
 
+  // Live updates from other visitors, layered on top of the one-shot load
+  // above (which covers history) so a new trace shows up without a reload.
+  useEffect(() => {
+    if (!ready) return
+    const source = new EventSource('/api/traces/stream')
+
+    source.addEventListener('trace', (e) => {
+      const trace = JSON.parse(e.data)
+      setEntries((prev) => {
+        if (!prev || prev.some((entry) => entry.id === trace.id)) return prev
+        return [trace, ...prev]
+      })
+    })
+
+    source.addEventListener('trace-delete', (e) => {
+      const { id } = JSON.parse(e.data)
+      setEntries((prev) => (prev ? prev.filter((entry) => entry.id !== id) : prev))
+    })
+
+    return () => source.close()
+  }, [ready])
+
   useEffect(() => {
     if (rateLimitSecondsLeft === null) return
     if (rateLimitSecondsLeft <= 0) {

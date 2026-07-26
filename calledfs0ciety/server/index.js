@@ -413,6 +413,34 @@ app.get('/api/whoami', (req, res) => {
   res.json(payload)
 })
 
+// Pushes new/deleted traces to every open GET /api/traces/stream connection
+// so the guestbook updates live instead of waiting for someone to reload.
+const traceSseClients = new Set()
+const SSE_HEARTBEAT_MS = 25_000
+
+function broadcastTraceEvent(event, data) {
+  const chunk = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+  for (const res of traceSseClients) res.write(chunk)
+}
+
+app.get('/api/traces/stream', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-store',
+    Connection: 'keep-alive',
+  })
+  res.flushHeaders()
+  traceSseClients.add(res)
+
+  // Cloudflare (and most proxies) drop an HTTP connection that's been idle
+  // too long, so keep it warm even during quiet periods with no new traces.
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), SSE_HEARTBEAT_MS)
+  req.on('close', () => {
+    clearInterval(heartbeat)
+    traceSseClients.delete(res)
+  })
+})
+
 app.get('/api/traces', (req, res) => {
   res.set('Cache-Control', 'no-store')
 
@@ -494,12 +522,14 @@ app.post('/api/traces', (req, res) => {
 
   logEvent('GUESTBOOK', `trace submitted by ${finalAlias}`)
 
-  res.status(201).json({
+  const payload = {
     id: row.id,
     alias: row.alias,
     message: row.message,
     createdAt: row.created_at,
-  })
+  }
+  broadcastTraceEvent('trace', payload)
+  res.status(201).json(payload)
 })
 
 app.post('/api/admin/login', (req, res) => {
@@ -533,6 +563,7 @@ app.delete('/api/traces/:id', requireAdmin, (req, res) => {
 
   logEvent('GUESTBOOK', `trace deleted${existing ? ` (${existing.alias})` : ''}`)
 
+  broadcastTraceEvent('trace-delete', { id })
   res.status(204).end()
 })
 
