@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import BootReveal, { BootCursor } from './BootReveal.jsx'
 import './Guestbook.css'
 
@@ -39,7 +39,7 @@ function Guestbook({ ready }) {
   const [adminToken, setAdminToken] = useState(null)
   const adminMode = adminToken !== null
 
-  async function loadTraces() {
+  const loadTraces = useCallback(async () => {
     setLoadState('loading')
     try {
       const res = await fetch('/api/traces?limit=50')
@@ -49,12 +49,12 @@ function Guestbook({ ready }) {
     } catch {
       setLoadState('error')
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (!ready) return
     loadTraces()
-  }, [ready])
+  }, [ready, loadTraces])
 
   // Live updates from other visitors, layered on top of the one-shot load
   // above (which covers history) so a new trace shows up without a reload.
@@ -160,7 +160,16 @@ function Guestbook({ ready }) {
         throw error
       }
 
-      setEntries((prev) => prev.map((entry) => (entry.id === tempId ? body : entry)))
+      // The live SSE subscription below can deliver this same trace before
+      // this response comes back, so drop the pending placeholder and only
+      // add `body` if that hasn't already happened.
+      setEntries((prev) => {
+        if (!prev) return prev
+        const withoutPending = prev.filter((entry) => entry.id !== tempId)
+        return withoutPending.some((entry) => entry.id === body.id)
+          ? withoutPending
+          : [body, ...withoutPending]
+      })
       setJustSentId(body.id)
       setTimeout(() => setJustSentId((id) => (id === body.id ? null : id)), ACK_MS)
     } catch (err) {
@@ -215,7 +224,7 @@ function Guestbook({ ready }) {
         </p>
       )}
       {submitError && <p className="gb-status gb-status--error">{submitError}</p>}
-      {justSentId && <p className="gb-status gb-status--ack">// transmission received</p>}
+      {justSentId && <p className="gb-status gb-status--ack">{'// transmission received'}</p>}
       {adminMode && <p className="gb-status gb-status--ack">{'// admin mode active'}</p>}
 
       <div className="gb-feed">
