@@ -9,6 +9,7 @@ import net from 'node:net'
 import os from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { CAMERA_IDS, fetchCameraPlaylist } from './cameras.js'
 import { checkProfanity, PROFANITY_MODE } from './profanity.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -296,28 +297,16 @@ async function getStatusPayload() {
 // events keep appearing autonomously even with nobody polling the site, and
 // so the extra camera checks don't leak into the System Status panel.
 const EVENT_CAMERAS = [
-  { id: 'thuthu', label: 'CAM_01', stream: 'https://cam.idokep.hu/live/thuthu/live-300918a100.m3u8' },
-  {
-    id: 'hotelvictoria',
-    label: 'CAM_02',
-    stream: 'https://cam.idokep.hu/live/hotelvictoria/live-0020520885.m3u8',
-  },
-  {
-    id: 'budapestpark',
-    label: 'CAM_03',
-    stream: 'https://cam.idokep.hu/live/budapestpark/live-c995f18840.m3u8',
-  },
-  {
-    id: 'schonherz1',
-    label: 'CAM_04',
-    stream: 'https://cam.idokep.hu/live/schonherz1/live-c57fd0cbbe.m3u8',
-  },
+  { id: 'thuthu', label: 'CAM_01' },
+  { id: 'hotelvictoria', label: 'CAM_02' },
+  { id: 'budapestpark', label: 'CAM_03' },
+  { id: 'schonherz1', label: 'CAM_04' },
 ]
 
 const EVENT_CHECK_TARGETS = [
   { key: 'website', kind: 'web', target: 'https://fs0ciety.hu' },
   { key: 'guestbook-api', kind: 'api', target: `http://localhost:${PORT}/api/traces?limit=1` },
-  ...EVENT_CAMERAS.map((cam) => ({ key: cam.id, kind: 'camera', target: cam.stream, label: cam.label })),
+  ...EVENT_CAMERAS.map((cam) => ({ key: cam.id, kind: 'camera', id: cam.id, label: cam.label })),
 ]
 
 const EVENT_CHECK_INTERVAL_MS = 45_000
@@ -333,9 +322,26 @@ function formatUptimeLabel(seconds) {
   return seconds >= 86400 ? `${seconds / 86400}d` : `${seconds / 3600}h`
 }
 
+// Cameras are checked by actually resolving+fetching their current playlist
+// (same path a browser tab would end up loading) rather than pinging a
+// hardcoded stream URL, which would go stale as soon as idokep.hu rotates it.
+async function checkEventTarget(target) {
+  if (target.kind === 'camera') {
+    return fetchCameraPlaylist(target.id).then(
+      () => ({ up: true }),
+      () => ({ up: false }),
+    )
+  }
+  return checkHttpTarget(target.target, SERVICE_CHECK_TIMEOUT_MS)
+}
+
 async function runEventChecks() {
   for (const target of EVENT_CHECK_TARGETS) {
-    const result = await checkHttpTarget(target.target, SERVICE_CHECK_TIMEOUT_MS)
+    const result = await withTimeout(
+      checkEventTarget(target),
+      SERVICE_CHECK_TIMEOUT_MS + 500,
+      { up: false, responseTimeMs: null },
+    )
     const prev = eventCheckState.get(target.key) || { up: null, streak: 0 }
 
     if (result.up) {
@@ -533,6 +539,55 @@ app.delete('/api/traces/:id', requireAdmin, (req, res) => {
 app.get('/api/status', async (req, res) => {
   res.set('Cache-Control', 'no-store')
   res.json(await getStatusPayload())
+})
+
+const CAMERA_ID_SET = new Set(CAMERA_IDS)
+
+// Proxies the camera's HLS playlist through our own origin (same-origin for
+// the browser, so no CORS issue) with segment lines rewritten to our own
+// segment route below, resolving idokep.hu's current stream path server-side
+// so nobody has to hand-update a stale hardcoded URL.
+app.get('/api/cam/:id/playlist.m3u8', async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+
+  const { id } = req.params
+  if (!CAMERA_ID_SET.has(id)) {
+    return res.status(404).json({ error: 'unknown_camera' })
+  }
+
+  try {
+    const raw = await fetchCameraPlaylist(id)
+    const rewritten = raw
+      .split('\n')
+      .map((line) => (line && !line.startsWith('#') ? `/api/cam/${id}/segments/${line.trim()}` : line))
+      .join('\n')
+    res.set('Content-Type', 'application/vnd.apple.mpegurl')
+    res.send(rewritten)
+  } catch {
+    res.status(502).json({ error: 'camera_unavailable' })
+  }
+})
+
+app.get('/api/cam/:id/segments/:file', (req, res) => {
+  const { id, file } = req.params
+  if (!CAMERA_ID_SET.has(id) || !/^[\w-]+\.ts$/.test(file)) {
+    return res.status(404).end()
+  }
+
+  const upstreamReq = https.get(
+    `https://cam.idokep.hu/live/${id}/${file}`,
+    { headers: { 'User-Agent': 'Mozilla/5.0' } },
+    (upstream) => {
+      if (upstream.statusCode >= 400) {
+        upstream.resume()
+        return res.status(404).end()
+      }
+      res.set('Content-Type', 'video/mp2t')
+      res.set('Cache-Control', 'public, max-age=30')
+      upstream.pipe(res)
+    },
+  )
+  upstreamReq.on('error', () => res.status(502).end())
 })
 
 const distPath = join(__dirname, '..', 'dist')

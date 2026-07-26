@@ -2,77 +2,84 @@ import { useEffect, useState } from 'react'
 import CamPlayer, { CamStatusIndicator } from './CamPlayer.jsx'
 import './WebcamPanel.css'
 
+// stream points at our own server, which resolves idokep.hu's current
+// playlist path and proxies it - idokep.hu rotates the hash suffix of that
+// path whenever a stream restarts, so hardcoding it here would go stale.
+function camStream(id) {
+  return `/api/cam/${id}/playlist.m3u8`
+}
+
 const CAMERAS = [
   {
     id: 'hotelvictoria',
-    stream: 'https://cam.idokep.hu/live/hotelvictoria/live-0020520885.m3u8',
+    stream: camStream('hotelvictoria'),
     poster: 'https://cam.idokep.hu/cam/hotelvictoria/thumbnail.jpg',
   },
   {
     id: 'thuthu',
-    stream: 'https://cam.idokep.hu/live/thuthu/live-300918a100.m3u8',
+    stream: camStream('thuthu'),
     poster: 'https://cam.idokep.hu/cam/thuthu/thumbnail.jpg',
   },
   {
     id: 'budapestpark',
-    stream: 'https://cam.idokep.hu/live/budapestpark/live-c995f18840.m3u8',
+    stream: camStream('budapestpark'),
     poster: 'https://cam.idokep.hu/cam/budapestpark/thumbnail.jpg',
   },
   {
     id: 'schonherz1',
-    stream: 'https://cam.idokep.hu/live/schonherz1/live-c57fd0cbbe.m3u8',
+    stream: camStream('schonherz1'),
     poster: 'https://cam.idokep.hu/cam/schonherz1/thumbnail.jpg',
   },
   {
     id: 'tihany_onkormanyzat',
-    stream: 'https://cam.idokep.hu/live/tihany_onkormanyzat/live-5e74212f13.m3u8',
+    stream: camStream('tihany_onkormanyzat'),
     poster: 'https://cam.idokep.hu/cam/tihany_onkormanyzat/thumbnail.jpg',
   },
   {
     id: 'internetx',
-    stream: 'https://cam.idokep.hu/live/internetx/live-3503247f4f.m3u8',
+    stream: camStream('internetx'),
     poster: 'https://cam.idokep.hu/cam/internetx/thumbnail.jpg',
   },
   {
     id: 'mordok',
-    stream: 'https://cam.idokep.hu/live/mordok/live-8b39c4eac8.m3u8',
+    stream: camStream('mordok'),
     poster: 'https://cam.idokep.hu/cam/mordok/thumbnail.jpg',
   },
   {
     id: 'fary24',
-    stream: 'https://cam.idokep.hu/live/fary24/live-0584bec1cb.m3u8',
+    stream: camStream('fary24'),
     poster: 'https://cam.idokep.hu/cam/fary24/thumbnail.jpg',
   },
   {
     id: 'letyi',
-    stream: 'https://cam.idokep.hu/live/letyi/live-7e2d62901e.m3u8',
+    stream: camStream('letyi'),
     poster: 'https://cam.idokep.hu/cam/letyi/thumbnail.jpg',
   },
   {
     id: 'dmjvcam3',
-    stream: 'https://cam.idokep.hu/live/dmjvcam3/live-3b223aee5c.m3u8',
+    stream: camStream('dmjvcam3'),
     poster: 'https://cam.idokep.hu/cam/dmjvcam3/thumbnail.jpg',
   },
   {
     id: 'elco',
-    stream: 'https://cam.idokep.hu/live/elco/live-8a159894a6.m3u8',
+    stream: camStream('elco'),
     poster: 'https://cam.idokep.hu/cam/elco/thumbnail.jpg',
   },
   {
     id: 'leonetti3',
-    stream: 'https://cam.idokep.hu/live/leonetti3/live-d9025f9e0e.m3u8',
+    stream: camStream('leonetti3'),
     poster: 'https://cam.idokep.hu/cam/leonetti3/thumbnail.jpg',
   },
   {
     id: 'volgyvaros6',
-    stream: 'https://cam.idokep.hu/live/volgyvaros6/live-deaa235058.m3u8',
+    stream: camStream('volgyvaros6'),
     poster: 'https://cam.idokep.hu/cam/volgyvaros6/thumbnail.jpg',
     // burned-in sponsor text at the top edge of the source image
     cropTop: 9,
   },
   {
     id: 'volgyvaros5',
-    stream: 'https://cam.idokep.hu/live/volgyvaros5/live-12d6abfe37.m3u8',
+    stream: camStream('volgyvaros5'),
     poster: 'https://cam.idokep.hu/cam/volgyvaros5/thumbnail.jpg',
     cropTop: 18,
   },
