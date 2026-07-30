@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CAMERA_IDS, fetchCameraPlaylist } from './cameras.js'
 import { checkProfanity, PROFANITY_MODE } from './profanity.js'
+import { getStockQuotes } from './stocks.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
@@ -570,6 +571,11 @@ app.delete('/api/traces/:id', requireAdmin, (req, res) => {
 app.get('/api/status', async (req, res) => {
   res.set('Cache-Control', 'no-store')
   res.json(await getStatusPayload())
+})
+
+app.get('/api/stocks', async (req, res) => {
+  res.set('Cache-Control', 'no-store')
+  res.json(await getStockQuotes())
 })
 
 const CAMERA_ID_SET = new Set(CAMERA_IDS)

@@ -10,6 +10,7 @@ import Guestbook from './Guestbook.jsx'
 import StatusPage from './StatusPage.jsx'
 import HeaderGreeting from './HeaderGreeting.jsx'
 import WebcamPanel from './WebcamPanel.jsx'
+import StockTicker from './StockTicker.jsx'
 import LiveFeed from './LiveFeed.jsx'
 import { captureOwnerFlagFromUrl } from './owner.js'
 import './App.css'
@@ -60,6 +61,7 @@ const PANEL_TABS_ROW1 = [
 const PANEL_TABS_ROW2 = [
   { key: 'log', label: 'Log' },
   { key: 'cams', label: 'Cams' },
+  { key: 'watchlist', label: 'Watchlist' },
 ]
 const MOBILE_BREAKPOINT = 1000
 
@@ -136,6 +138,9 @@ function App() {
             <div className="panel-col panel-col--center">
               <div className={`panel-item${openPanel === 'cams' ? ' panel-item--active' : ''}`}>
                 <WebcamPanel ready={bootReady} streaming={camsStreaming} />
+              </div>
+              <div className={`panel-item${openPanel === 'watchlist' ? ' panel-item--active' : ''}`}>
+                <StockTicker ready={bootReady} />
               </div>
             </div>
             <div className="panel-col panel-col--right">

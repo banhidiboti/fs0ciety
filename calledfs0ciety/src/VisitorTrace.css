@@ -2,12 +2,12 @@
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 14px 24px;
   box-sizing: border-box;
   text-align: left;
   font-family: var(--mono);
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 .trace-line {

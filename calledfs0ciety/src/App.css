@@ -1,5 +1,5 @@
 #site-header {
-  padding: 20px 32px;
+  padding: 8px 32px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -16,8 +16,8 @@
   grid-template-columns:
     minmax(300px, 1fr) minmax(300px, 1.3fr) minmax(300px, 1fr);
   align-items: start;
-  gap: 16px 24px;
-  padding: 8px 16px 0;
+  gap: 12px 24px;
+  padding: 4px 16px 0;
   box-sizing: border-box;
 }
 
@@ -25,7 +25,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  gap: 16px;
+  gap: 12px;
 }
 
 #panel-row .panel-col > *,
@@ -43,12 +43,18 @@
   .panel-col--right {
     align-self: center;
   }
+
+  /* nudges "Your info" down a bit so it doesn't sit right under System
+     status - the column as a whole is still vertically centered. */
+  .panel-col--right {
+    gap: 24px;
+  }
 }
 
 @media (max-width: 1000px) {
   #blank-page {
     justify-content: flex-start;
-    padding-top: 10vh;
+    padding-top: 16px;
   }
 
   #panel-row {
@@ -112,7 +118,7 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: stretch;
-  padding: 6px 32px;
+  padding: 2px 32px;
   border-top: 1px solid var(--border);
 }
 
@@ -197,6 +203,34 @@
 @media (max-width: 640px) {
   .footer-item {
     border-right: none;
-    padding: 4px 18px;
+    padding: 4px 14px;
+  }
+
+  .footer-label {
+    font-size: 10px;
+  }
+
+  .footer-label-row {
+    min-height: 12px;
+  }
+
+  .footer-logo-row {
+    height: 32px;
+  }
+
+  .footer-logo {
+    height: 22px;
+  }
+
+  .footer-logo.logo-pi {
+    height: 32px;
+  }
+
+  .footer-logo.logo-cf {
+    height: 29px;
+  }
+
+  .footer-logo.logo-nodejs {
+    height: 27px;
   }
 }

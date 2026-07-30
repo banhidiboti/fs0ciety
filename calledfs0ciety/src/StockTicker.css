@@ -1,0 +1,182 @@
+.stock-ticker {
+  width: 100%;
+  padding: 0 24px 10px;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 14px;
+  /* tighter than the site's usual 1.8 - this list shows all 14 rows at
+     once with no internal scroll, so row height matters more here. */
+  line-height: 1.3;
+}
+
+.stock-ticker-header {
+  margin-bottom: 6px;
+}
+
+.stock-title {
+  color: #3ecf66;
+  font-weight: 600;
+}
+
+.stock-ticker-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+  border-top: 1px solid var(--border);
+}
+
+.stock-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.stock-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.stock-logo {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: #14151b;
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+.stock-symbol {
+  flex: 0 0 44px;
+  color: #c8d0d8;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stock-sparkline {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 20px;
+}
+
+.stock-sparkline-line--up {
+  fill: none;
+  stroke: #3ecf66;
+  stroke-width: 1.5;
+}
+
+.stock-sparkline-line--down {
+  fill: none;
+  stroke: #e05252;
+  stroke-width: 1.5;
+}
+
+.stock-arrow {
+  flex: 0 0 48px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.stock-arrow--up {
+  color: #3ecf66;
+}
+
+.stock-arrow--down {
+  color: #e05252;
+}
+
+.stock-price {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #7fe0a0;
+  font-size: 13px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stock-change {
+  flex: 0 0 62px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.stock-change--up {
+  color: #3ecf66;
+}
+
+.stock-change--down {
+  color: #e05252;
+}
+
+/* Mobile gets its own dedicated tab (no camera sharing the screen), so
+   there's room to size everything up further. Still 2 columns here -
+   there's enough width per column above the single-column breakpoint. */
+@media (max-width: 1000px) {
+  .stock-ticker {
+    font-size: 15px;
+    padding: 0 20px 20px;
+  }
+
+  .stock-row {
+    padding: 8px 0;
+    gap: 8px;
+  }
+
+  .stock-logo {
+    flex-basis: 24px;
+    width: 24px;
+    height: 24px;
+  }
+
+  .stock-symbol {
+    flex-basis: 46px;
+    font-size: 14px;
+  }
+
+  .stock-sparkline {
+    flex-basis: 46px;
+    width: 46px;
+    height: 20px;
+  }
+
+  .stock-arrow {
+    flex-basis: 46px;
+    font-size: 14px;
+  }
+
+  .stock-price,
+  .stock-change {
+    font-size: 14px;
+  }
+
+  .stock-change {
+    flex-basis: 60px;
+  }
+}
+
+/* Phones: switches to a single column (14 rows stacked instead of
+   7+7), since there isn't enough width for two side by side once the
+   fixed-width cells above are large enough to read comfortably. Rows
+   can stay roomy vertically since there's no column to squeeze against. */
+@media (max-width: 600px) {
+  .stock-ticker {
+    padding: 0 14px 18px;
+  }
+
+  .stock-ticker-columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .stock-row {
+    padding: 6px 0;
+  }
+}

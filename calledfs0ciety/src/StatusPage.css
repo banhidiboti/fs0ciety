@@ -2,12 +2,12 @@
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 14px 24px;
   box-sizing: border-box;
   text-align: left;
   font-family: var(--mono);
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 .status-line {
@@ -40,7 +40,7 @@
 }
 
 .status-section {
-  margin: 16px 0;
+  margin: 10px 0;
 }
 
 .status-bar-row {
